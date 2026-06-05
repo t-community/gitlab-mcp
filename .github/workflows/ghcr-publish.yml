@@ -1,14 +1,19 @@
 name: GHCR Publish
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
         description: 'Docker image tag (e.g., v2.0.19 or latest)'
         required: true
         default: 'latest'
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -32,21 +37,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker (Release)
-        if: github.event_name == 'release'
-        id: meta-release
+      - name: Extract metadata for Docker
+        id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
           tags: |
+            type=ref,event=branch
             type=semver,pattern={{version}}
-            latest
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
 
-      - name: Set tags for manual dispatch
+      - name: Override tags for manual dispatch
         if: github.event_name == 'workflow_dispatch'
-        id: meta-manual
+        id: manual-tags
         run: |
           echo "tags=ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+
+      - name: Determine final tags
+        id: final-tags
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tags=${{ steps.manual-tags.outputs.tags }}" >> $GITHUB_OUTPUT
+          else
+            echo "tags=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -54,4 +69,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ github.event_name == 'release' && steps.meta-release.outputs.tags || steps.meta-manual.outputs.tags }}
+          tags: ${{ steps.final-tags.outputs.tags }}
