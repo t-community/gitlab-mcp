@@ -38,7 +38,7 @@ describe('Dynamic API URL - Multiple GitLab Instances', () => {
 
   before(async () => {
     // Start first mock GitLab server
-    const mockPort1 = await findMockServerPort(MOCK_GITLAB_PORT_BASE_1);
+    const mockPort1 = await findMockServerPort();
     mockGitLab1 = new MockGitLabServer({
       port: mockPort1,
       validTokens: [MOCK_TOKEN_1]
@@ -47,7 +47,7 @@ describe('Dynamic API URL - Multiple GitLab Instances', () => {
     mockGitLabUrl1 = mockGitLab1.getUrl();
 
     // Start second mock GitLab server
-    const mockPort2 = await findMockServerPort(MOCK_GITLAB_PORT_BASE_2);
+    const mockPort2 = await findMockServerPort();
     mockGitLab2 = new MockGitLabServer({
       port: mockPort2,
       validTokens: [MOCK_TOKEN_2]
@@ -250,7 +250,7 @@ describe('Dynamic API URL - Connection Pool', () => {
 
   before(async () => {
     // Start mock GitLab servers
-    const mockPort1 = await findMockServerPort(MOCK_GITLAB_PORT_BASE_1 + 50);
+    const mockPort1 = await findMockServerPort();
     mockGitLab1 = new MockGitLabServer({
       port: mockPort1,
       validTokens: [MOCK_TOKEN_1]
@@ -258,7 +258,7 @@ describe('Dynamic API URL - Connection Pool', () => {
     await mockGitLab1.start();
     mockGitLabUrl1 = mockGitLab1.getUrl();
 
-    const mockPort2 = await findMockServerPort(MOCK_GITLAB_PORT_BASE_2 + 50);
+    const mockPort2 = await findMockServerPort();
     mockGitLab2 = new MockGitLabServer({
       port: mockPort2,
       validTokens: [MOCK_TOKEN_2]
@@ -282,7 +282,7 @@ describe('Dynamic API URL - Connection Pool', () => {
     });
     servers.push(server);
     mcpUrl = `http://${HOST}:${mcpPort}/mcp`;
-    metricsUrl = `http://${HOST}:${mcpPort}/metrics`;
+    metricsUrl = `http://${HOST}:${mcpPort}/metrics.json`;
 
     console.log(`MCP Server: ${mcpUrl}`);
     console.log(`Metrics URL: ${metricsUrl}`);
@@ -298,7 +298,7 @@ describe('Dynamic API URL - Connection Pool', () => {
     }
   });
 
-  test('should track pool statistics via metrics endpoint', async () => {
+  test('should track pool statistics via metrics JSON endpoint', async () => {
     // Make some connections first
     const client1 = new CustomHeaderClient({
       'authorization': `Bearer ${MOCK_TOKEN_1}`,
@@ -317,7 +317,7 @@ describe('Dynamic API URL - Connection Pool', () => {
 
     // Check metrics
     const response = await fetch(metricsUrl);
-    assert.ok(response.ok, 'Metrics endpoint should be accessible');
+    assert.ok(response.ok, 'Metrics JSON endpoint should be accessible');
     
     const metrics = await response.json();
     assert.ok(metrics.gitlabClientPool, 'Should have pool metrics');

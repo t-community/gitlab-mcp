@@ -110,6 +110,14 @@ const PENDING_AUTH_MAX_SIZE = 1000;
 const PENDING_AUTH_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const CLIENT_CACHE_MAX_SIZE = 1000;
 
+function singleQueryParam(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function invalidQueryParam(value: unknown): boolean {
+  return value != null && typeof value !== "string";
+}
+
 /**
  * Stateless-mode configuration for the OAuth provider.
  *
@@ -215,12 +223,18 @@ class GitLabOAuthServerProvider implements OAuthServerProvider {
   // bypassed. Enabled independently of callback-proxy mode.
   private readonly _stateless: StatelessOAuthOptions | null;
 
+  // Group allowlist (optional). When set, tokens are rejected unless the
+  // authenticated user is a direct or inherited member of at least one group.
+  // Checked once at token issuance (exchangeAuthorizationCode), not per request.
+  private readonly _allowedGroups: string[] | null;
+
   constructor(
     gitlabBaseUrl: string,
     gitlabAppId: string,
     resourceName: string,
     readOnly: boolean,
     customScopes?: string[],
+    allowedGroups?: string[],
     callbackProxyEnabled = false,
     callbackUrl = "",
     stateless: StatelessOAuthOptions | null = null
@@ -234,6 +248,7 @@ class GitLabOAuthServerProvider implements OAuthServerProvider {
         : readOnly
           ? REQUIRED_GITLAB_SCOPES_RO
           : REQUIRED_GITLAB_SCOPES_RW;
+    this._allowedGroups = allowedGroups ?? null;
     this._callbackProxyEnabled = callbackProxyEnabled;
     this._callbackUrl = callbackUrl;
     this._stateless = stateless;
@@ -461,6 +476,8 @@ class GitLabOAuthServerProvider implements OAuthServerProvider {
     redirectUri?: string,
     resource?: URL
   ): Promise<OAuthTokens> {
+    let tokens: OAuthTokens;
+
     if (this._callbackProxyEnabled) {
       // --- Callback proxy mode ---
       // The authorizationCode is a proxy code we generated in handleCallback().
@@ -533,34 +550,83 @@ class GitLabOAuthServerProvider implements OAuthServerProvider {
         }
       }
 
-      return entry.tokens;
+      tokens = entry.tokens;
+    } else {
+      // --- Passthrough mode (original behavior) ---
+      const params = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: this._gitlabAppId,
+        code: authorizationCode,
+      });
+
+      if (codeVerifier) params.append("code_verifier", codeVerifier);
+      if (redirectUri) params.append("redirect_uri", redirectUri);
+      if (resource) params.append("resource", resource.href);
+
+      const response = await fetch(`${this._gitlabBaseUrl}/oauth/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        logger.error(`Token exchange failed (${response.status}): ${body}`);
+        throw new ServerError(`Token exchange failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      tokens = OAuthTokensSchema.parse(data);
     }
 
-    // --- Passthrough mode (original behavior) ---
-    const params = new URLSearchParams({
-      grant_type: "authorization_code",
-      client_id: this._gitlabAppId,
-      code: authorizationCode,
-    });
-
-    if (codeVerifier) params.append("code_verifier", codeVerifier);
-    if (redirectUri) params.append("redirect_uri", redirectUri);
-    if (resource) params.append("resource", resource.href);
-
-    const response = await fetch(`${this._gitlabBaseUrl}/oauth/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      logger.error(`Token exchange failed (${response.status}): ${body}`);
-      throw new ServerError(`Token exchange failed: ${response.status}`);
+    if (this._allowedGroups) {
+      const isMember = await this._checkGroupMembership(tokens.access_token);
+      if (!isMember) {
+        logger.warn({ allowedGroups: this._allowedGroups }, "Token issuance denied: user is not a member of any allowed group");
+        throw new ServerError("Access denied: user is not a member of an allowed group");
+      }
     }
 
-    const data = await response.json();
-    return OAuthTokensSchema.parse(data);
+    return tokens;
+  }
+
+  /**
+   * Returns true if the token owner belongs to at least one group whose
+   * full_path equals or is a sub-path of any configured allowed group.
+   *
+   * Example: allowedGroups=["my-org"] allows members of "my-org",
+   * "my-org/team-a", "my-org/team-a/squad-1", etc.
+   */
+  private async _checkGroupMembership(token: string): Promise<boolean> {
+    const allowedPaths = this._allowedGroups!.map((g) => g.toLowerCase());
+    let page = 1;
+
+    while (true) {
+      const res = await fetch(`${this._gitlabBaseUrl}/api/v4/groups?min_access_level=10&per_page=100&page=${page}`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+
+      if (!res.ok) break;
+
+      const groups = (await res.json()) as Array<{ full_path: string }>;
+
+      if (groups.length === 0) break;
+
+      const matched = groups.some((g) => {
+        const fp = g.full_path.toLowerCase();
+        return allowedPaths.some((allowed) => fp === allowed || fp.startsWith(`${allowed}/`));
+      });
+
+      if (matched) return true;
+
+      const totalPages = Number.parseInt(res.headers.get("x-total-pages") ?? "1", 10);
+
+      if (page >= totalPages) break;
+
+      page++;
+    }
+
+    return false;
   }
 
   // ---- Refresh token -----------------------------------------------------
@@ -635,12 +701,23 @@ class GitLabOAuthServerProvider implements OAuthServerProvider {
       return;
     }
 
-    const code = req.query.code as string | undefined;
-    const state = req.query.state as string | undefined;
-    const error = req.query.error as string | undefined;
+    if (
+      invalidQueryParam(req.query.code) ||
+      invalidQueryParam(req.query.state) ||
+      invalidQueryParam(req.query.error) ||
+      invalidQueryParam(req.query.error_description)
+    ) {
+      res.status(400).send("Invalid query parameter");
+      return;
+    }
+
+    const code = singleQueryParam(req.query.code);
+    const state = singleQueryParam(req.query.state);
+    const error = singleQueryParam(req.query.error);
+    const errorDescription = singleQueryParam(req.query.error_description) ?? "(no description)";
 
     if (error) {
-      logger.error(`GitLab OAuth error: ${error} — ${req.query.error_description ?? "(no description)"}`);
+      logger.error(`GitLab OAuth error: ${error} — ${errorDescription}`);
       res.status(400).send("Authorization failed");
       return;
     }
@@ -816,6 +893,7 @@ export function createGitLabOAuthProvider(
   resourceName = "GitLab MCP Server",
   readOnly = false,
   customScopes?: string[],
+  allowedGroups?: string[],
   callbackProxyEnabled = false,
   callbackUrl = "",
   stateless: StatelessOAuthOptions | null = null
@@ -826,6 +904,7 @@ export function createGitLabOAuthProvider(
     resourceName,
     readOnly,
     customScopes,
+    allowedGroups,
     callbackProxyEnabled,
     callbackUrl,
     stateless

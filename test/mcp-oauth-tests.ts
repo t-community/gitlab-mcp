@@ -103,13 +103,12 @@ function addOAuthEndpoints(
 // ---------------------------------------------------------------------------
 
 describe("MCP OAuth — Discovery Endpoints", () => {
-  let mcpUrl: string;
   let mcpBaseUrl: string;
   let mockGitLab: MockGitLabServer;
   let servers: ServerInstance[] = [];
 
   before(async () => {
-    const mockPort = await findMockServerPort(MOCK_GITLAB_PORT_BASE);
+    const mockPort = await findMockServerPort();
     mockGitLab = new MockGitLabServer({
       port: mockPort,
       validTokens: [MOCK_OAUTH_TOKEN],
@@ -121,7 +120,6 @@ describe("MCP OAuth — Discovery Endpoints", () => {
 
     const mcpPort = await findAvailablePort(MCP_SERVER_PORT_BASE);
     mcpBaseUrl = `http://${HOST}:${mcpPort}`;
-    mcpUrl = `${mcpBaseUrl}/mcp`;
 
     const server = await launchServer({
       mode: TransportMode.STREAMABLE_HTTP,
@@ -174,8 +172,31 @@ describe("MCP OAuth — Discovery Endpoints", () => {
     console.log("  ✓ Protected resource metadata returned");
   });
 
+  test("unprefixed MCP_SERVER_URL serves /mcp resource discovery at /.well-known/oauth-protected-resource/mcp", async () => {
+    // When MCP_SERVER_URL has no path, the server registers a dedicated route
+    // at /.well-known/oauth-protected-resource/mcp (RFC 9728 path-suffixed
+    // discovery) so clients connecting to /mcp can discover the resource.
+    const issuerUrl = new URL(mcpBaseUrl);
+
+    const res = await fetch(`${mcpBaseUrl}/.well-known/oauth-protected-resource/mcp`);
+    assert.strictEqual(res.status, 200, "Should return 200");
+
+    const body = (await res.json()) as Record<string, unknown>;
+    assert.strictEqual(
+      body.resource,
+      `${issuerUrl.origin}/mcp`,
+      "resource should be ${origin}/mcp"
+    );
+    assert.deepStrictEqual(
+      body.authorization_servers,
+      [issuerUrl.href],
+      "authorization_servers should contain the issuer URL"
+    );
+    console.log("  ✓ Unprefixed MCP_SERVER_URL: /mcp resource discovery returned correct metadata");
+  });
+
   test("path-prefixed MCP_SERVER_URL serves path-aware discovery metadata", async () => {
-    const mockPort = await findMockServerPort(MOCK_GITLAB_PORT_BASE + 25);
+    const mockPort = await findMockServerPort();
     const prefixedMockGitLab = new MockGitLabServer({
       port: mockPort,
       validTokens: [MOCK_OAUTH_TOKEN],
@@ -248,7 +269,7 @@ describe("MCP OAuth — /mcp Auth Enforcement", () => {
   let servers: ServerInstance[] = [];
 
   before(async () => {
-    const mockPort = await findMockServerPort(MOCK_GITLAB_PORT_BASE + 50);
+    const mockPort = await findMockServerPort();
     mockGitLab = new MockGitLabServer({
       port: mockPort,
       validTokens: [MOCK_OAUTH_TOKEN],
@@ -351,14 +372,6 @@ describe("MCP OAuth — /mcp Auth Enforcement", () => {
 describe("MCP OAuth — BoundedClientCache", () => {
   // Access the internal class via a minimal provider (it's not exported directly)
   // by driving it through the public clientsStore API.
-
-  function makeClient(id: string, redirectUri = "https://example.com/cb"): Record<string, unknown> {
-    return {
-      client_id: id,
-      redirect_uris: [redirectUri],
-      token_endpoint_auth_method: "none",
-    };
-  }
 
   async function buildCachingProvider() {
     // Spin up a DCR stub that returns a stable client_id from the request body.
@@ -470,7 +483,7 @@ describe("MCP OAuth — createGitLabOAuthProvider", () => {
   test("verifyAccessToken throws on non-OK response", async () => {
     // Spin up a tiny local server that always returns 401
     const { createServer } = await import("node:http");
-    const stub = createServer((req, res) => {
+    const stub = createServer((_req, res) => {
       res.writeHead(401);
       res.end(JSON.stringify({ error: "invalid_token" }));
     });
@@ -646,7 +659,7 @@ describe("MCP OAuth — Header Auth Fallback", () => {
   let servers: ServerInstance[] = [];
 
   before(async () => {
-    const mockPort = await findMockServerPort(MOCK_GITLAB_PORT_BASE + 150);
+    const mockPort = await findMockServerPort();
     mockGitLab = new MockGitLabServer({
       port: mockPort,
       // Include both OAuth token and raw tokens so GitLab API calls succeed
@@ -731,6 +744,21 @@ describe("MCP OAuth — Header Auth Fallback", () => {
     console.log(`  ✓ JOB-TOKEN header accepted (status: ${res.status})`);
   });
 
+  test("POST /mcp with invalid Private-Token is rejected before session creation", async () => {
+    const res = await fetch(mcpUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        "Private-Token": "glpat-invalid-token-0000",
+      },
+      body: initBody,
+    });
+
+    assert.strictEqual(res.status, 401);
+    assert.strictEqual(res.headers.get("mcp-session-id"), null);
+  });
+
   test("POST /mcp with valid OAuth Bearer token still works normally", async () => {
     const res = await fetch(mcpUrl, {
       method: "POST",
@@ -756,5 +784,297 @@ describe("MCP OAuth — Header Auth Fallback", () => {
 
     assert.strictEqual(res.status, 401, "Should return 401 with no auth");
     console.log("  ✓ No auth still returns 401");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test suite: Group Allowlist (unit tests — exchangeAuthorizationCode)
+// ---------------------------------------------------------------------------
+
+describe("MCP OAuth — Group Allowlist", () => {
+  let stubServer: import("node:http").Server;
+  let stubUrl: string;
+
+  // Mutable state lets each test control the stub's response without
+  // spinning up a new server.
+  let groupsForPage: (page: number) => Array<{ full_path: string }> = () => [];
+  let totalPages = 1;
+
+  before(async () => {
+    const { createServer } = await import("node:http");
+    stubServer = createServer((req, res) => {
+      const url = new URL(req.url!, "http://127.0.0.1");
+
+      res.setHeader("Content-Type", "application/json");
+
+      // Token exchange — passthrough mode calls POST /oauth/token
+      if (req.method === "POST" && url.pathname === "/oauth/token") {
+        res.writeHead(200).end(
+          JSON.stringify({
+            access_token: MOCK_OAUTH_TOKEN,
+            token_type: "bearer",
+            expires_in: 7200,
+            refresh_token: "mock-refresh",
+            scope: "api",
+          })
+        );
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/api/v4/groups") {
+        const page = Number.parseInt(url.searchParams.get("page") ?? "1", 10);
+        res
+          .writeHead(200, { "x-total-pages": String(totalPages) })
+          .end(JSON.stringify(groupsForPage(page)));
+        return;
+      }
+
+      res.writeHead(404).end("{}");
+    });
+
+    await new Promise<void>(resolve => stubServer.listen(0, "127.0.0.1", resolve));
+    const addr = stubServer.address() as { port: number };
+    stubUrl = `http://127.0.0.1:${addr.port}`;
+  });
+
+  after(() => {
+    stubServer.close();
+  });
+
+  async function makeProvider(
+    allowedGroups: string[] | undefined = undefined,
+    callbackProxyEnabled = false
+  ) {
+    const { createGitLabOAuthProvider } = await import("../oauth-proxy.js");
+    return createGitLabOAuthProvider(
+      stubUrl,
+      "test-app-id",
+      "GitLab MCP Server",
+      false,
+      undefined, // customScopes
+      allowedGroups,
+      callbackProxyEnabled,
+      callbackProxyEnabled ? "https://mcp.example.test/callback" : "" // callbackUrl
+    );
+  }
+
+  // Passthrough mode: client is not used by exchangeAuthorizationCode.
+  type Provider = Awaited<ReturnType<typeof makeProvider>>;
+  type StoredTokensAccessor = {
+    _storedTokens: {
+      set: (
+        key: string,
+        value: {
+          tokens: {
+            access_token: string;
+            token_type: "bearer";
+            expires_in: number;
+            refresh_token: string;
+            scope: string;
+          };
+          clientId: string;
+          clientCodeChallenge: string;
+          clientRedirectUri: string;
+          createdAt: number;
+        }
+      ) => void;
+    };
+  };
+  function exchange(provider: Provider) {
+    return provider.exchangeAuthorizationCode(
+      {} as import("@modelcontextprotocol/sdk/shared/auth.js").OAuthClientInformationFull,
+      "mock-auth-code"
+    );
+  }
+
+  test("no allowedGroups — groups API not called, tokens returned", async () => {
+    const provider = await makeProvider(undefined);
+    groupsForPage = () => []; // wrong groups — proves endpoint isn't called
+    totalPages = 1;
+
+    const tokens = await exchange(provider);
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ No allowedGroups: token issued without group check");
+  });
+
+  test("user is direct member of the allowed group → token issued", async () => {
+    const provider = await makeProvider(["my-org"]);
+    groupsForPage = () => [{ full_path: "my-org" }];
+    totalPages = 1;
+
+    const tokens = await exchange(provider);
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ Direct group member: token issued");
+  });
+
+  test("user in first-level subgroup of allowed group → token issued", async () => {
+    const provider = await makeProvider(["my-org"]);
+    groupsForPage = () => [{ full_path: "my-org/team-a" }];
+    totalPages = 1;
+
+    const tokens = await exchange(provider);
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ First-level subgroup member: token issued");
+  });
+
+  test("user in nested subgroup → token issued", async () => {
+    const provider = await makeProvider(["my-org"]);
+    groupsForPage = () => [{ full_path: "my-org/team-a/squad-1" }];
+    totalPages = 1;
+
+    const tokens = await exchange(provider);
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ Nested subgroup member: token issued");
+  });
+
+  test("user not in any matching group → token issuance denied", async () => {
+    const provider = await makeProvider(["my-org"]);
+    groupsForPage = () => [{ full_path: "other-org" }];
+    totalPages = 1;
+
+    await assert.rejects(
+      () => exchange(provider),
+      (err: Error) => {
+        assert.ok(err.message.includes("Access denied"), `Unexpected message: ${err.message}`);
+        return true;
+      }
+    );
+    console.log("  ✓ Non-member: token issuance denied");
+  });
+
+  test("prefix spoofing rejected — my-org2 does not match my-org", async () => {
+    const provider = await makeProvider(["my-org"]);
+    groupsForPage = () => [{ full_path: "my-org2" }];
+    totalPages = 1;
+
+    await assert.rejects(
+      () => exchange(provider),
+      (err: Error) => {
+        assert.ok(err.message.includes("Access denied"), `Unexpected message: ${err.message}`);
+        return true;
+      }
+    );
+    console.log("  ✓ my-org2 correctly rejected (not a sub-path of my-org)");
+  });
+
+  test("user matches second of multiple allowed groups → token issued", async () => {
+    const provider = await makeProvider(["team-x", "my-org"]);
+    groupsForPage = () => [{ full_path: "my-org/backend" }];
+    totalPages = 1;
+
+    const tokens = await exchange(provider);
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ Match on second allowed group: token issued");
+  });
+
+  test("match found on page 2 of paginated groups response → token issued", async () => {
+    const provider = await makeProvider(["my-org"]);
+    totalPages = 2;
+    groupsForPage = page =>
+      page === 1 ? [{ full_path: "other-org" }] : [{ full_path: "my-org/team-b" }];
+
+    const tokens = await exchange(provider);
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ Group found on page 2: token issued");
+  });
+
+  test("user not in group across all pages → token issuance denied", async () => {
+    const provider = await makeProvider(["my-org"]);
+    totalPages = 2;
+    groupsForPage = () => [{ full_path: "other-org" }];
+
+    await assert.rejects(
+      () => exchange(provider),
+      (err: Error) => {
+        assert.ok(err.message.includes("Access denied"), `Unexpected message: ${err.message}`);
+        return true;
+      }
+    );
+    console.log("  ✓ Non-member across all pages: token issuance denied");
+  });
+
+  test("callback-proxy exchange also enforces allowed groups", async () => {
+    const provider = await makeProvider(["my-org"], true);
+    groupsForPage = () => [{ full_path: "my-org/team-a" }];
+    totalPages = 1;
+
+    const proxyCode = "proxy-code-for-group-test";
+    const clientId = "test-client";
+    const redirectUri = "https://client.example.test/callback";
+    (provider as unknown as StoredTokensAccessor)._storedTokens.set(proxyCode, {
+      tokens: {
+        access_token: MOCK_OAUTH_TOKEN,
+        token_type: "bearer",
+        expires_in: 7200,
+        refresh_token: "mock-refresh",
+        scope: "api",
+      },
+      clientId,
+      clientCodeChallenge: "",
+      clientRedirectUri: redirectUri,
+      createdAt: Date.now(),
+    });
+
+    const tokens = await provider.exchangeAuthorizationCode(
+      {
+        client_id: clientId,
+      } as import("@modelcontextprotocol/sdk/shared/auth.js").OAuthClientInformationFull,
+      proxyCode,
+      undefined,
+      redirectUri
+    );
+
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ Callback-proxy exchange enforces allowedGroups before issuing tokens");
+  });
+
+  test("callback-proxy exchange denies users outside allowed groups", async () => {
+    const provider = await makeProvider(["my-org"], true);
+    groupsForPage = () => [{ full_path: "other-org/team-a" }];
+    totalPages = 1;
+
+    const proxyCode = "proxy-code-for-group-deny-test";
+    const clientId = "test-client-deny";
+    const redirectUri = "https://client.example.test/callback";
+    (provider as unknown as StoredTokensAccessor)._storedTokens.set(proxyCode, {
+      tokens: {
+        access_token: MOCK_OAUTH_TOKEN,
+        token_type: "bearer",
+        expires_in: 7200,
+        refresh_token: "mock-refresh",
+        scope: "api",
+      },
+      clientId,
+      clientCodeChallenge: "",
+      clientRedirectUri: redirectUri,
+      createdAt: Date.now(),
+    });
+
+    await assert.rejects(
+      () =>
+        provider.exchangeAuthorizationCode(
+          {
+            client_id: clientId,
+          } as import("@modelcontextprotocol/sdk/shared/auth.js").OAuthClientInformationFull,
+          proxyCode,
+          undefined,
+          redirectUri
+        ),
+      (err: Error) => {
+        assert.ok(err.message.includes("Access denied"), `Unexpected message: ${err.message}`);
+        return true;
+      }
+    );
+    console.log("  ✓ Callback-proxy exchange denies users outside allowedGroups");
+  });
+
+  test("matching is case-insensitive", async () => {
+    const provider = await makeProvider(["My-Org"]);
+    groupsForPage = () => [{ full_path: "my-org/team-a" }];
+    totalPages = 1;
+
+    const tokens = await exchange(provider);
+    assert.strictEqual(tokens.access_token, MOCK_OAUTH_TOKEN);
+    console.log("  ✓ Case-insensitive match: token issued");
   });
 });

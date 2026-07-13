@@ -40,9 +40,27 @@ export const IS_OLD = getConfig("is-old", "GITLAB_IS_OLD") === "true";
 // ---------------------------------------------------------------------------
 
 export const GITLAB_READ_ONLY_MODE = getConfig("read-only", "GITLAB_READ_ONLY_MODE") === "true";
+
+export type GitLabPermissionMode = "readonly" | "modify" | "full";
+const PERMISSION_MODES: readonly GitLabPermissionMode[] = ["readonly", "modify", "full"];
+export const GITLAB_PERMISSION_MODE: GitLabPermissionMode = (() => {
+  const raw = getConfig("permission-mode", "GITLAB_PERMISSION_MODE");
+  if (raw !== undefined && !PERMISSION_MODES.includes(raw as GitLabPermissionMode)) {
+    throw new Error(
+      `Invalid GITLAB_PERMISSION_MODE: "${raw}". Expected one of: ${PERMISSION_MODES.join(", ")}`
+    );
+  }
+  // Legacy GITLAB_READ_ONLY_MODE=true always wins (most restrictive)
+  if (GITLAB_READ_ONLY_MODE) {
+    return "readonly";
+  }
+  return (raw as GitLabPermissionMode | undefined) ?? "full";
+})();
 export const USE_GITLAB_WIKI = getConfig("use-wiki", "USE_GITLAB_WIKI") === "true";
 export const USE_MILESTONE = getConfig("use-milestone", "USE_MILESTONE") === "true";
 export const USE_PIPELINE = getConfig("use-pipeline", "USE_PIPELINE") === "true";
+export const GITLAB_DISABLE_VERSION_CHECK =
+  getConfig("disable-version-check", "GITLAB_DISABLE_VERSION_CHECK") === "true";
 
 // ---------------------------------------------------------------------------
 // Tool filtering
@@ -70,6 +88,12 @@ export const SSE = getConfig("sse", "SSE") === "true";
 export const STREAMABLE_HTTP = getConfig("streamable-http", "STREAMABLE_HTTP") === "true";
 export const REMOTE_AUTHORIZATION = getConfig("remote-auth", "REMOTE_AUTHORIZATION") === "true";
 export const GITLAB_MCP_OAUTH = getConfig("mcp-oauth", "GITLAB_MCP_OAUTH") === "true";
+export const GITLAB_ALLOW_UNAUTHENTICATED_TOOL_DISCOVERY =
+  getConfig(
+    "allow-unauthenticated-tool-discovery",
+    "GITLAB_ALLOW_UNAUTHENTICATED_TOOL_DISCOVERY"
+  ) === "true";
+export const MCP_TRUST_PROXY = getConfig("mcp-trust-proxy", "MCP_TRUST_PROXY") === "true";
 
 // ---------------------------------------------------------------------------
 // OAuth / MCP OAuth
@@ -84,6 +108,17 @@ export const GITLAB_OAUTH_SCOPES =
     : undefined;
 export const GITLAB_OAUTH_CALLBACK_PROXY =
   getConfig("oauth-callback-proxy", "GITLAB_OAUTH_CALLBACK_PROXY") === "true";
+/** @deprecated Use GITLAB_OAUTH_ALLOWED_GROUPS_RAW instead. Will be removed in the next major version. */
+export const GITLAB_ALLOWED_GROUPS_RAW = getConfig("allowed-groups", "GITLAB_ALLOWED_GROUPS");
+export const GITLAB_OAUTH_ALLOWED_GROUPS_RAW = getConfig("oauth-allowed-groups", "GITLAB_OAUTH_ALLOWED_GROUPS");
+export const GITLAB_OAUTH_ALLOWED_GROUPS = (() => {
+  const newVar = GITLAB_OAUTH_ALLOWED_GROUPS_RAW;
+  const oldVar = GITLAB_ALLOWED_GROUPS_RAW;
+  const raw = newVar ?? oldVar;
+  if (!raw) return undefined;
+  const groups = raw.split(",").map((g) => g.trim()).filter(Boolean);
+  return groups.length > 0 ? groups : undefined;
+})();
 export const ENABLE_DYNAMIC_API_URL =
   getConfig("enable-dynamic-api-url", "ENABLE_DYNAMIC_API_URL") === "true";
 

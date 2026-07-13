@@ -2,9 +2,9 @@
 
 [English](./README.md) | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
 
-> **新功能**：支持带连接池的动态 GitLab API URL。详情请参阅 [Dynamic API URL 文档](docs/dynamic-api-url.md)。
+📖 **[文档 →](https://zereight.github.io/gitlab-mcp/)** 设置指南、环境变量和完整工具参考请查看托管文档站点。
 
-[![Star History Chart](https://api.star-history.com/svg?repos=zereight/gitlab-mcp&type=Date)](https://www.star-history.com/#zereight/gitlab-mcp&Date)
+[![Star History Chart](./assets/star-history.png)](https://www.star-history.com/?repos=zereight%2Fgitlab-mcp&type=date&legend=top-left)
 
 ## @zereight/mcp-gitlab
 
@@ -20,18 +20,20 @@
 - 客户端设置友好：提供 Claude Code、Codex、Antigravity、OpenCode、Copilot、Cline、Roo Code、Cursor、Kilo Code 和 Amp Code 示例
 - 适合自托管：支持自定义 GitLab 实例、代理设置和动态 API URL 路由
 
-快速开始：在下面选择 Personal Access Token 或 OAuth2 设置，并在 MCP 客户端配置中使用 `@zereight/mcp-gitlab`。
+快速开始：在下面选择 Personal Access Token 或 OAuth2 设置，安装 `@zereight/mcp-gitlab`，并在 MCP 客户端配置中使用 `zereight-mcp-gitlab`。
 
 ### 客户端设置指南
 
-- [Claude Code 设置指南](./docs/claude-code-setup.md)
-- [VS Code 设置指南](./docs/vscode-setup.md)
-- [GitHub Copilot 设置指南](./docs/copilot-setup.md)
-- [Codex 设置指南](./docs/codex-setup.md)
-- [Cursor 设置指南](./docs/cursor-setup.md)
-- [基于 JSON 的 MCP 客户端设置指南](./docs/json-mcp-clients-setup.md) - 适用于 Factory AI Droid、OpenClaw 和 OpenCode 风格客户端
-- [OAuth2 认证设置指南](./docs/oauth-setup.md)
-- [环境变量参考](./docs/environment-variables.md)
+- [Claude Code 设置指南](./docs/clients/claude-code.md)
+- [VS Code 设置指南](./docs/clients/vscode.md)
+- [GitHub Copilot 设置指南](./docs/clients/copilot.md)
+- [Codex 设置指南](./docs/clients/codex.md)
+- [Cursor 设置指南](./docs/clients/cursor.md)
+- [基于 JSON 的 MCP 客户端设置指南](./docs/clients/json-clients.md) - 适用于 Factory AI Droid、OpenClaw 和 OpenCode 风格客户端
+- [OAuth2 认证设置指南](./docs/auth/oauth-setup.md)
+- [环境变量参考](./docs/configuration/environment-variables.md)
+- [Stateless Mode — 多 Pod HPA](./docs/configuration/stateless-mode.md)
+- [自定义 Agent 与多 PAT 设置](./docs/auth/custom-agent-multiple-pat.md)
 
 ## 使用方法
 
@@ -53,15 +55,31 @@
 
 #### 快速设置路径
 
-- **Claude Code**：[Claude Code 设置指南](./docs/claude-code-setup.md)
-- **VS Code**：[VS Code 设置指南](./docs/vscode-setup.md)
-- **GitHub Copilot**：[GitHub Copilot 设置指南](./docs/copilot-setup.md)
-- **Codex**：[Codex 设置指南](./docs/codex-setup.md)
-- **Cursor**：[Cursor 设置指南](./docs/cursor-setup.md)
-- **Factory AI Droid / OpenClaw / OpenCode 风格客户端**：[基于 JSON 的 MCP 客户端设置指南](./docs/json-mcp-clients-setup.md)
-- **OAuth 浏览器流程详情**：[OAuth2 认证设置指南](./docs/oauth-setup.md)
+- **Claude Code**：[Claude Code 设置指南](./docs/clients/claude-code.md)
+- **VS Code**：[VS Code 设置指南](./docs/clients/vscode.md)
+- **GitHub Copilot**：[GitHub Copilot 设置指南](./docs/clients/copilot.md)
+- **Codex**：[Codex 设置指南](./docs/clients/codex.md)
+- **Cursor**：[Cursor 设置指南](./docs/clients/cursor.md)
+- **Factory AI Droid / OpenClaw / OpenCode 风格客户端**：[基于 JSON 的 MCP 客户端设置指南](./docs/clients/json-clients.md)
+- **OAuth 浏览器流程详情**：[OAuth2 认证设置指南](./docs/auth/oauth-setup.md)
 
 最简单的本地设置可以从 Personal Access Token 开始。基于浏览器的本地认证使用 OAuth2。远程或多用户部署请继续查看下面的 MCP OAuth 和远程授权部分。
+
+安装服务器：
+
+```shell
+brew install zereight/gitlab-mcp/zereight-mcp-gitlab
+```
+
+也可以使用 npm 安装：
+
+```shell
+npm install -g @zereight/mcp-gitlab
+```
+
+示例使用 `zereight-mcp-gitlab`，这是比旧的 `mcp-gitlab` 更不容易冲突的别名。如果 MCP 客户端找不到它，请使用 `which zereight-mcp-gitlab` 输出的绝对路径。
+
+如果不想全局安装，请将 `npx` 固定到上一个稳定版本（即文档推荐的版本），例如 `npx -y @zereight/mcp-gitlab@2.1.32`。如果始终想使用最新版本，请改用 `npx -y @zereight/mcp-gitlab@latest`。有新版本发布时，服务器会在启动时通过 stderr 提示（可用 `GITLAB_DISABLE_VERSION_CHECK=true` 关闭）。
 
 #### 使用 CLI 参数（适用于环境变量有问题的客户端）
 
@@ -71,13 +89,8 @@
 {
   "mcpServers": {
     "gitlab": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@zereight/mcp-gitlab",
-        "--token=YOUR_GITLAB_TOKEN",
-        "--api-url=https://gitlab.com/api/v4"
-      ],
+      "command": "zereight-mcp-gitlab",
+      "args": ["--token=YOUR_GITLAB_TOKEN", "--api-url=https://gitlab.com/api/v4"],
       "tools": ["*"]
     }
   }
@@ -88,12 +101,22 @@
 
 - `--token` - GitLab Personal Access Token（替代 `GITLAB_PERSONAL_ACCESS_TOKEN`）
 - `--api-url` - GitLab API URL（替代 `GITLAB_API_URL`）
-- `--read-only=true` - 启用只读模式（替代 `GITLAB_READ_ONLY_MODE`）
-- `--use-wiki=true` - 启用 Wiki API（替代 `USE_GITLAB_WIKI`）
-- `--use-milestone=true` - 启用里程碑 API（替代 `USE_MILESTONE`）
-- `--use-pipeline=true` - 启用流水线 API（替代 `USE_PIPELINE`）
+- `--read-only=true` - 启用只读模式（替代 `GITLAB_READ_ONLY_MODE`，已弃用 — 推荐 `--permission-mode=readonly`）
+- `--permission-mode` - 权限级别：`readonly`、`modify`（禁用删除工具）或 `full`（替代 `GITLAB_PERMISSION_MODE`，默认 `full`）
+- `--use-wiki=true` - 启用 Wiki API（替代 `USE_GITLAB_WIKI`，旧版 — 推荐 `GITLAB_TOOLSETS=wiki`）
+- `--use-milestone=true` - 启用里程碑 API（替代 `USE_MILESTONE`，旧版 — 推荐 `GITLAB_TOOLSETS=milestones`）
+- `--use-pipeline=true` - 启用流水线 API（替代 `USE_PIPELINE`，旧版 — 推荐 `GITLAB_TOOLSETS=pipelines`）
+- `--disable-version-check=true` - 关闭启动时的新版本提示（替代 `GITLAB_DISABLE_VERSION_CHECK`）
 
 CLI 参数优先于环境变量。
+
+> **细粒度工具过滤：**使用 `GITLAB_PERMISSION_MODE=modify` 允许创建/更新并阻止所有删除工具，
+> 或使用 `GITLAB_PERMISSION_MODE=readonly` 只读运行。还可以用
+> `GITLAB_TOOLSETS=<group,…>` 启用工具分组，用 `GITLAB_TOOLS=<tool,…>` 白名单启用单个工具
+> （例如：只读分组 + 少数几个写工具），用 `GITLAB_DENIED_TOOLS_REGEX` 按正则屏蔽工具。
+> 旧版 `USE_GITLAB_WIKI` / `USE_MILESTONE` / `USE_PIPELINE` 标志仅为向后兼容保留。
+> 参见 [Tools Reference](./docs/tools/index.md#feature-toggles) 和
+> [Environment Variables](./docs/configuration/environment-variables.md)。
 
 #### SSE
 
@@ -102,11 +125,10 @@ docker run -i --rm \
   -e HOST=0.0.0.0 \
   -e GITLAB_PERSONAL_ACCESS_TOKEN=your_gitlab_token \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
-  -e GITLAB_READ_ONLY_MODE=true \
-  -e USE_GITLAB_WIKI=true \
-  -e USE_MILESTONE=true \
-  -e USE_PIPELINE=true \
+  -e GITLAB_PERMISSION_MODE=readonly \
+  -e GITLAB_TOOLSETS=wiki,milestones,pipelines \
   -e SSE=true \
+  -e SSE_AUTH_TOKEN=your_mcp_sse_token \
   -p 3333:3002 \
   zereight050/gitlab-mcp
 ```
@@ -116,7 +138,10 @@ docker run -i --rm \
   "mcpServers": {
     "gitlab": {
       "type": "sse",
-      "url": "http://localhost:3333/sse"
+      "url": "http://localhost:3333/sse",
+      "headers": {
+        "Authorization": "Bearer your_mcp_sse_token"
+      }
     }
   }
 }
@@ -127,12 +152,10 @@ docker run -i --rm \
 ```shell
 docker run -i --rm \
   -e HOST=0.0.0.0 \
-  -e GITLAB_PERSONAL_ACCESS_TOKEN=your_gitlab_token \
+  -e REMOTE_AUTHORIZATION=true \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
-  -e GITLAB_READ_ONLY_MODE=true \
-  -e USE_GITLAB_WIKI=true \
-  -e USE_MILESTONE=true \
-  -e USE_PIPELINE=true \
+  -e GITLAB_PERMISSION_MODE=readonly \
+  -e GITLAB_TOOLSETS=wiki,milestones,pipelines \
   -e STREAMABLE_HTTP=true \
   -p 3333:3002 \
   zereight050/gitlab-mcp
@@ -143,7 +166,10 @@ docker run -i --rm \
   "mcpServers": {
     "gitlab": {
       "type": "streamable-http",
-      "url": "http://localhost:3333/mcp"
+      "url": "http://localhost:3333/mcp",
+      "headers": {
+        "Authorization": "Bearer glpat-..."
+      }
     }
   }
 }
@@ -163,10 +189,10 @@ OpenCode、MCPJam、Claude.ai 等远程 MCP 客户端可能会在授权时发送
 
 远程 MCP OAuth 不同。在 `GITLAB_MCP_OAUTH=true` 模式下，MCP 客户端会在 `/authorize` 请求中提供自己的 callback URL。`GITLAB_OAUTH_REDIRECT_URI` 不会替换这个客户端提供的 URL。
 
-| 模式 | 启用方式 | Callback 变量 | GitLab Redirect URI |
-| --- | --- | --- | --- |
-| 本地 OAuth | `GITLAB_USE_OAUTH=true` | `GITLAB_OAUTH_REDIRECT_URI` | `http://127.0.0.1:8888/callback` 或你的本地 callback |
-| 远程 MCP OAuth | `GITLAB_MCP_OAUTH=true` | `GITLAB_OAUTH_CALLBACK_PROXY=true` | `{MCP_SERVER_URL}/callback` |
+| 模式           | 启用方式                | Callback 变量                      | GitLab Redirect URI                                  |
+| -------------- | ----------------------- | ---------------------------------- | ---------------------------------------------------- |
+| 本地 OAuth     | `GITLAB_USE_OAUTH=true` | `GITLAB_OAUTH_REDIRECT_URI`        | `http://127.0.0.1:8888/callback` 或你的本地 callback |
+| 远程 MCP OAuth | `GITLAB_MCP_OAUTH=true` | `GITLAB_OAUTH_CALLBACK_PROXY=true` | `{MCP_SERVER_URL}/callback`                          |
 
 只有当 MCP 服务器自己接收本地浏览器 callback 时，才使用 `GITLAB_OAUTH_REDIRECT_URI`。当远程 MCP 客户端拥有 callback URL 时，请使用 `GITLAB_OAUTH_CALLBACK_PROXY=true`。
 
@@ -178,15 +204,18 @@ OpenCode、MCPJam、Claude.ai 等远程 MCP 客户端可能会在授权时发送
 2. 预先注册的 GitLab OAuth 应用，包含 `api` 或 `read_api` scopes
    — 前往 `Admin area` → `Applications`，将 Redirect URI 设置为 `{MCP_SERVER_URL}/callback`
 
-| 环境变量 | 必需 | 说明 |
-| --- | --- | --- |
-| `GITLAB_MCP_OAUTH` | 是 | 设置为 `true` 以启用 |
-| `GITLAB_API_URL` | 是 | GitLab API base URL |
-| `GITLAB_OAUTH_APP_ID` | 是 | GitLab OAuth Application ID |
-| `MCP_SERVER_URL` | 是 | 此 MCP 服务器的公开 HTTPS URL |
-| `STREAMABLE_HTTP` | 是 | 必须为 `true` |
-| `GITLAB_OAUTH_CALLBACK_PROXY` | 可选 | 设置为 `true` 时使用 MCP 服务器固定的 `/callback` URL |
-| `GITLAB_OAUTH_SCOPES` | 可选 | 逗号分隔的 scope（默认：`api,read_api,read_user`） |
+| 环境变量                      | 必需 | 说明                                                                                                        |
+| ----------------------------- | ---- | ----------------------------------------------------------------------------------------------------------- |
+| `GITLAB_MCP_OAUTH`            | 是   | 设置为 `true` 以启用                                                                                        |
+| `GITLAB_API_URL`              | 是   | GitLab API base URL                                                                                         |
+| `GITLAB_OAUTH_APP_ID`         | 是   | GitLab OAuth Application ID                                                                                 |
+| `MCP_SERVER_URL`              | 是   | 此 MCP 服务器的公开 HTTPS URL                                                                               |
+| `STREAMABLE_HTTP`             | 是   | 必须为 `true`                                                                                               |
+| `GITLAB_OAUTH_CALLBACK_PROXY` | 可选 | 设置为 `true` 时使用 MCP 服务器固定的 `/callback` URL                                                       |
+| `GITLAB_OAUTH_SCOPES`         | 可选 | 逗号分隔的 scope（默认：`api,read_api,read_user`）                                                          |
+| `GITLAB_OAUTH_ALLOWED_GROUPS` | 可选 | 逗号分隔的 GitLab 群组完整路径 — 仅该群组及其子群组的成员可获取令牌（替代已废弃的 `GITLAB_ALLOWED_GROUPS`） |
+
+当 `STREAMABLE_HTTP=true` 时，服务端 GitLab 凭据（`GITLAB_PERSONAL_ACCESS_TOKEN`、`GITLAB_JOB_TOKEN`、`GITLAB_AUTH_COOKIE_PATH` 或 `GITLAB_USE_OAUTH`）需要 `REMOTE_AUTHORIZATION=true`、`GITLAB_MCP_OAUTH=true` 或 `STREAMABLE_HTTP_AUTH_TOKEN`。
 
 > **排查 `Unregistered redirect_uri`**
 >
@@ -232,11 +261,19 @@ MCP 客户端配置：
 
 **请求头优先级**：`Private-Token` > `JOB-TOKEN` > `Authorization: Bearer`
 
-| 环境变量 | 必需 | 说明 |
-| --- | --- | --- |
-| `REMOTE_AUTHORIZATION` | 是 | 设置为 `true` 以启用 |
-| `STREAMABLE_HTTP` | 是 | 必须为 `true` |
-| `ENABLE_DYNAMIC_API_URL` | 可选 | 允许按请求通过 `X-GitLab-API-URL` 请求头指定 GitLab URL |
+| 环境变量                                                         | 必需 | 说明                                                                                                                    |
+| ---------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------- |
+| `REMOTE_AUTHORIZATION`                                           | 是   | 设置为 `true` 以启用                                                                                                    |
+| `STREAMABLE_HTTP`                                                | 是   | 必须为 `true`                                                                                                           |
+| `ENABLE_DYNAMIC_API_URL`                                         | 可选 | 允许按请求通过 `X-GitLab-API-URL` 请求头指定 GitLab URL                                                                 |
+| `GITLAB_ALLOWED_HOSTS`                                           | 可选 | 允许的 `X-GitLab-API-URL` 主机逗号分隔列表；`GITLAB_API_URL` 中的主机始终允许                                          |
+| `GITLAB_ALLOW_UNAUTHENTICATED_TOOL_DISCOVERY`                    | 可选 | 仅允许未认证的 `initialize`、`notifications/initialized`、`tools/list`（工具调用仍需认证）                                |
+| `MCP_SERVER_URL` / `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` | 可选 | 用于 DNS rebinding 防护的允许 `/mcp` 主机/来源值                                                                        |
+| `MCP_TRUST_PROXY`                                                | 可选 | 在反向代理后信任 `Forwarded` / `X-Forwarded-*` 请求头（下载 URL、Express `req.ip`、`/mcp` IP 速率限制、OAuth 速率限制） |
+
+`GITLAB_ALLOW_UNAUTHENTICATED_TOOL_DISCOVERY=true` 适用于在用户提供 GitLab token 之前需要检查工具元数据的 MCP 网关或管理 UI。除非你的部署可以安全地暴露工具列表，否则请保持禁用。
+
+当未设置 `MCP_SERVER_URL` 时，远程下载 URL 会回退到本地服务器地址。仅当服务器通过受信任的反向代理可达且已阻止客户端直接访问 MCP 服务器时，才设置 `MCP_TRUST_PROXY=true`。这会为 Streamable HTTP 和 SSE 启用 Express `trust proxy`，从 `Forwarded` / `X-Forwarded-Proto` / `X-Forwarded-Host` / `X-Forwarded-Prefix` 派生公共下载 URL，并在代理通过 `X-Forwarded-For` 发送带客户端端口的地址（例如 `1.2.3.4:5678`）时保持 OAuth 端点速率限制可用。引入此标志后，现有 OAuth+代理部署必须显式设置。
 
 **示例请求头：**
 
@@ -256,13 +293,15 @@ Authorization: Bearer glpat-xxxxxxxxxxxxxxxxxxxx
 
 完整环境变量列表请查看专门的参考文档：
 
-- [环境变量参考](./docs/environment-variables.md)
+- [环境变量参考](./docs/configuration/environment-variables.md)
 
 大多数用户只需要以下起始组合之一：
 
 - **本地 PAT**：`GITLAB_PERSONAL_ACCESS_TOKEN`, `GITLAB_API_URL`
 - **本地 OAuth**：`GITLAB_USE_OAUTH=true`, `GITLAB_OAUTH_CLIENT_ID`, `GITLAB_OAUTH_REDIRECT_URI`, `GITLAB_API_URL`
-- **远程多用户 HTTP**：`STREAMABLE_HTTP=true`, `REMOTE_AUTHORIZATION=true`, `HOST`, `PORT`
+- **远程多用户 HTTP**：`STREAMABLE_HTTP=true`, `REMOTE_AUTHORIZATION=true`（或 `GITLAB_MCP_OAUTH=true`）, `MCP_TRUST_PROXY=true`（反向代理后）, `MAX_REQUESTS_PER_MINUTE=300`, `MCP_SERVER_URL` 或 `MCP_ALLOWED_HOSTS`, `HOST`, `PORT`
+- **并行运行多个部署**：为每个实例设置不同的 `MCP_SERVER_NAME`（例如 `gitlab-selfhosted-readonly`），以便在客户端、日志和遥测数据中区分它们
+- **多 Pod HPA（stateless）**：上述配置 + `OAUTH_STATELESS_MODE=true`, `OAUTH_STATELESS_SECRET`（所有 Pod 相同）。参见 [Stateless Mode](./docs/configuration/stateless-mode.md)。
 
 常用变量：
 
@@ -270,8 +309,15 @@ Authorization: Bearer glpat-xxxxxxxxxxxxxxxxxxxx
 - `GITLAB_PERSONAL_ACCESS_TOKEN`
 - `GITLAB_USE_OAUTH`
 - `REMOTE_AUTHORIZATION`
+- `MCP_TRUST_PROXY`
+- `MAX_REQUESTS_PER_MINUTE`
+- `MAX_SESSIONS`
+- `MCP_ALLOWED_HOSTS`
+- `MCP_ALLOWED_ORIGINS`
 - `GITLAB_MCP_OAUTH`
 - `GITLAB_OAUTH_CALLBACK_PROXY`
+- `OAUTH_STATELESS_MODE`
+- `OAUTH_STATELESS_SECRET`
 
 参考文档还包含：
 
@@ -282,7 +328,7 @@ Authorization: Bearer glpat-xxxxxxxxxxxxxxxxxxxx
 - 传输和会话变量
 - 代理和 TLS 变量
 
-回调代理模式详情请参阅 [GitLab MCP OAuth Callback Proxy](./docs/oauth-callback-proxy.md)。
+回调代理模式详情请参阅 [GitLab MCP OAuth Callback Proxy](./docs/auth/oauth-callback-proxy.md)。
 
 ### 远程授权设置（多用户支持）
 
@@ -299,7 +345,7 @@ docker run -d \
   -e STREAMABLE_HTTP=true \
   -e REMOTE_AUTHORIZATION=true \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
-  -e GITLAB_READ_ONLY_MODE=true \
+  -e GITLAB_PERMISSION_MODE=readonly \
   -e SESSION_TIMEOUT_SECONDS=3600 \
   -p 3333:3002 \
   zereight050/gitlab-mcp
@@ -342,7 +388,7 @@ token 按会话存储（由 `mcp-session-id` 请求头标识），并在同一�
 - 每个会话相互隔离。一个会话的 token 不能访问另一个会话的数据。会话关闭后 token 会自动清理。
 - **会话超时：** 认证 token 在 `SESSION_TIMEOUT_SECONDS`（默认 1 小时）无活动后过期。超时后，客户端必须再次发送认证请求头。传输会话仍保持活动。
 - 每个请求都会重置该会话的超时计时器。
-- **Rate limiting：** 每个会话限制为每分钟 `MAX_REQUESTS_PER_MINUTE` 次请求（默认 60）。
+- **Rate limiting：** `/mcp` 请求按客户端 IP 限制为每分钟 `MAX_REQUESTS_PER_MINUTE` 次；使用 OAuth 或远程授权时还按 MCP 会话限制（默认 60）。详见 [environment-variables.md](docs/configuration/environment-variables.md#max_requests_per_minute)。
 - **Capacity limit：** 服务器最多接受 `MAX_SESSIONS` 个并发会话（默认 1000）。
 
 ### MCP OAuth 设置（Claude.ai Native OAuth）
@@ -410,15 +456,15 @@ node build/index.js
 
 **环境变量：**
 
-| 变量 | 必需 | 说明 |
-| --- | --- | --- |
-| `GITLAB_MCP_OAUTH` | 是 | 设置为 `true` 以启用 |
-| `GITLAB_OAUTH_APP_ID` | 是 | 预先注册的 GitLab OAuth 应用 client ID |
-| `MCP_SERVER_URL` | 是 | MCP 服务器的公开 HTTPS URL |
-| `GITLAB_API_URL` | 是 | GitLab 实例 API URL（例如 `https://gitlab.com/api/v4`） |
-| `STREAMABLE_HTTP` | 是 | 必须为 `true`（不支持 SSE） |
-| `GITLAB_OAUTH_SCOPES` | 否 | 要请求的 GitLab scopes，以逗号分隔。默认值为 `api`，当 `GITLAB_READ_ONLY_MODE=true` 时为 `read_api`。预注册应用必须配置至少这些 scopes。 |
-| `MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL` | 否 | 仅用于本地 HTTP 开发 |
+| 变量                                        | 必需 | 说明                                                                                                                                     |
+| ------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITLAB_MCP_OAUTH`                          | 是   | 设置为 `true` 以启用                                                                                                                     |
+| `GITLAB_OAUTH_APP_ID`                       | 是   | 预先注册的 GitLab OAuth 应用 client ID                                                                                                   |
+| `MCP_SERVER_URL`                            | 是   | MCP 服务器的公开 HTTPS URL                                                                                                               |
+| `GITLAB_API_URL`                            | 是   | GitLab 实例 API URL（例如 `https://gitlab.com/api/v4`）                                                                                  |
+| `STREAMABLE_HTTP`                           | 是   | 必须为 `true`（不支持 SSE）                                                                                                              |
+| `GITLAB_OAUTH_SCOPES`                       | 否   | 要请求的 GitLab scopes，以逗号分隔。默认值为 `api`，当 `GITLAB_READ_ONLY_MODE=true` 时为 `read_api`。预注册应用必须配置至少这些 scopes。 |
+| `MCP_DANGEROUSLY_ALLOW_INSECURE_ISSUER_URL` | 否   | 仅用于本地 HTTP 开发                                                                                                                     |
 
 **重要说明：**
 
@@ -445,6 +491,22 @@ npx skills add zereight/gitlab-mcp --skill gitlab-mcp-skill
 ## 工具 🛠️
 
 完整工具列表请参考英文 README 的 [Tools 部分](./README.md#tools-%EF%B8%8F)。当前服务器提供合并请求、议题、流水线、部署、环境、制品、里程碑、Wiki、仓库、发布、用户、事件、work item、webhook、代码搜索和 GraphQL 执行相关工具。
+
+### Wiki 页面标题与 slug
+
+GitLab 会根据 wiki 页面标题推导其 **slug**（即 URL，`/-/wikis/<slug>`）。因此向 `update_wiki_page` / `update_group_wiki_page` 传入 `title` 会**重命名页面并改变其 URL**——对于嵌套页面，还可能把页面移动到不同的路径——从而导致已有链接失效。
+
+若只想修改**显示标题**而保持 URL 不变，请**不要**传入 `title`，而是把显示标题写入页面内容的 YAML front matter 并更新内容：
+
+```markdown
+---
+title: 我的自定义显示标题
+---
+
+页面正文…
+```
+
+GitLab 会保持 slug/URL 不变，并在界面中显示 front matter 中的标题。读取时对 `get_wiki_page` 传入 `render_html: true`，即可填充 `front_matter` 字段——而普通的 `title` 字段始终反映由 slug 推导的值。
 
 ## 测试 🧪
 

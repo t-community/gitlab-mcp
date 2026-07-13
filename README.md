@@ -2,9 +2,9 @@
 
 [English](./README.md) | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
 
-> **New Feature**: Dynamic GitLab API URL support with connection pooling! See [Dynamic API URL Documentation](docs/dynamic-api-url.md) for details.
+📖 **[Documentation →](https://zereight.github.io/gitlab-mcp/)** Setup guides, environment variables, and the full tool reference live on the hosted docs site.
 
-[![Star History Chart](https://api.star-history.com/svg?repos=zereight/gitlab-mcp&type=Date)](https://www.star-history.com/#zereight/gitlab-mcp&Date)
+[![Star History Chart](./assets/star-history.png)](https://www.star-history.com/?repos=zereight%2Fgitlab-mcp&type=date&legend=top-left)
 
 ## @zereight/mcp-gitlab
 
@@ -20,20 +20,20 @@ Supports PAT, OAuth, read-only mode, dynamic API URLs, and remote authorization 
 - Client-friendly setup — examples for Claude Code, Codex, Antigravity, OpenCode, Copilot, Cline, Roo Code, Cursor, Kilo Code, and Amp Code
 - Self-hosted ready — works with custom GitLab instances, proxy settings, and dynamic API URL routing
 
-Quick start: choose either Personal Access Token or OAuth2 setup below and use `@zereight/mcp-gitlab` in your MCP client configuration.
+Quick start: choose either Personal Access Token or OAuth2 setup below, install `@zereight/mcp-gitlab`, and use `zereight-mcp-gitlab` in your MCP client configuration.
 
 ### Client Setup Guides
 
-- [Claude Code Setup Guide](./docs/claude-code-setup.md)
-- [VS Code Setup Guide](./docs/vscode-setup.md)
-- [GitHub Copilot Setup Guide](./docs/copilot-setup.md)
-- [Codex Setup Guide](./docs/codex-setup.md)
-- [Cursor Setup Guide](./docs/cursor-setup.md)
-- [JSON-Based MCP Clients Setup Guide](./docs/json-mcp-clients-setup.md) - for Factory AI Droid, OpenClaw, and OpenCode style clients
-- [OAuth2 Authentication Setup Guide](./docs/oauth-setup.md)
-- [Environment Variables Reference](./docs/environment-variables.md)
-- [Stateless Mode — Multi-Pod HPA](./docs/stateless-mode.md)
-- [Custom Agents and Multiple PAT Setup](./docs/custom-agent-multiple-pat.md)
+- [Claude Code Setup Guide](./docs/clients/claude-code.md)
+- [VS Code Setup Guide](./docs/clients/vscode.md)
+- [GitHub Copilot Setup Guide](./docs/clients/copilot.md)
+- [Codex Setup Guide](./docs/clients/codex.md)
+- [Cursor Setup Guide](./docs/clients/cursor.md)
+- [JSON-Based MCP Clients Setup Guide](./docs/clients/json-clients.md) - for Factory AI Droid, OpenClaw, and OpenCode style clients
+- [OAuth2 Authentication Setup Guide](./docs/auth/oauth-setup.md)
+- [Environment Variables Reference](./docs/configuration/environment-variables.md)
+- [Stateless Mode — Multi-Pod HPA](./docs/configuration/stateless-mode.md)
+- [Custom Agents and Multiple PAT Setup](./docs/auth/custom-agent-multiple-pat.md)
 
 ## Usage
 
@@ -55,15 +55,31 @@ The server supports four authentication methods:
 
 #### Quick setup paths
 
-- **Claude Code**: see [Claude Code Setup Guide](./docs/claude-code-setup.md)
-- **VS Code**: see [VS Code Setup Guide](./docs/vscode-setup.md)
-- **GitHub Copilot**: see [GitHub Copilot Setup Guide](./docs/copilot-setup.md)
-- **Codex**: see [Codex Setup Guide](./docs/codex-setup.md)
-- **Cursor**: see [Cursor Setup Guide](./docs/cursor-setup.md)
-- **Factory AI Droid / OpenClaw / OpenCode style clients**: see [JSON-Based MCP Clients Setup Guide](./docs/json-mcp-clients-setup.md)
-- **OAuth browser flow details**: see [OAuth2 Authentication Setup Guide](./docs/oauth-setup.md)
+- **Claude Code**: see [Claude Code Setup Guide](./docs/clients/claude-code.md)
+- **VS Code**: see [VS Code Setup Guide](./docs/clients/vscode.md)
+- **GitHub Copilot**: see [GitHub Copilot Setup Guide](./docs/clients/copilot.md)
+- **Codex**: see [Codex Setup Guide](./docs/clients/codex.md)
+- **Cursor**: see [Cursor Setup Guide](./docs/clients/cursor.md)
+- **Factory AI Droid / OpenClaw / OpenCode style clients**: see [JSON-Based MCP Clients Setup Guide](./docs/clients/json-clients.md)
+- **OAuth browser flow details**: see [OAuth2 Authentication Setup Guide](./docs/auth/oauth-setup.md)
 
 For the simplest local setup, start with a Personal Access Token. For browser-based local auth, use OAuth2. For remote or multi-user deployments, continue to the MCP OAuth and Remote Authorization sections later in this README.
+
+Install the server once:
+
+```shell
+brew install zereight/gitlab-mcp/zereight-mcp-gitlab
+```
+
+Or with npm:
+
+```shell
+npm install -g @zereight/mcp-gitlab
+```
+
+The examples use `zereight-mcp-gitlab`, a less collision-prone alias for the legacy `mcp-gitlab` binary. If your MCP client cannot find it, use the absolute path from `which zereight-mcp-gitlab`.
+
+No global install? Pin `npx` to the previous stable release (the version these docs recommend), for example `npx -y @zereight/mcp-gitlab@2.1.32`. If you always want the newest release, use `npx -y @zereight/mcp-gitlab@latest` instead. The server prints a notice to stderr on startup when a newer version is available (disable with `GITLAB_DISABLE_VERSION_CHECK=true`).
 
 #### Using CLI Arguments (for clients with env var issues)
 
@@ -73,13 +89,8 @@ Some MCP clients (like GitHub Copilot CLI) have issues with environment variable
 {
   "mcpServers": {
     "gitlab": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@zereight/mcp-gitlab",
-        "--token=YOUR_GITLAB_TOKEN",
-        "--api-url=https://gitlab.com/api/v4"
-      ],
+      "command": "zereight-mcp-gitlab",
+      "args": ["--token=YOUR_GITLAB_TOKEN", "--api-url=https://gitlab.com/api/v4"],
       "tools": ["*"]
     }
   }
@@ -90,12 +101,24 @@ Some MCP clients (like GitHub Copilot CLI) have issues with environment variable
 
 - `--token` - GitLab Personal Access Token (replaces `GITLAB_PERSONAL_ACCESS_TOKEN`)
 - `--api-url` - GitLab API URL (replaces `GITLAB_API_URL`)
-- `--read-only=true` - Enable read-only mode (replaces `GITLAB_READ_ONLY_MODE`)
-- `--use-wiki=true` - Enable wiki API (replaces `USE_GITLAB_WIKI`)
-- `--use-milestone=true` - Enable milestone API (replaces `USE_MILESTONE`)
-- `--use-pipeline=true` - Enable pipeline API (replaces `USE_PIPELINE`)
+- `--read-only=true` - Enable read-only mode (replaces `GITLAB_READ_ONLY_MODE`, deprecated — prefer `--permission-mode=readonly`)
+- `--permission-mode` - Permission level: `readonly`, `modify` (no delete tools), or `full` (replaces `GITLAB_PERMISSION_MODE`, default `full`)
+- `--use-wiki=true` - Enable wiki API (replaces `USE_GITLAB_WIKI`, legacy — prefer `GITLAB_TOOLSETS=wiki`)
+- `--use-milestone=true` - Enable milestone API (replaces `USE_MILESTONE`, legacy — prefer `GITLAB_TOOLSETS=milestones`)
+- `--use-pipeline=true` - Enable pipeline API (replaces `USE_PIPELINE`, legacy — prefer `GITLAB_TOOLSETS=pipelines`)
+- `--disable-version-check=true` - Disable the startup new-version notice (replaces `GITLAB_DISABLE_VERSION_CHECK`)
 
 CLI arguments take precedence over environment variables.
+
+> **Fine-grained tool filtering:** use `GITLAB_PERMISSION_MODE=modify` to allow create/update while
+> blocking every delete tool (including delete mutations through `execute_graphql`), or
+> `GITLAB_PERMISSION_MODE=readonly` for read-only access. You can also
+> enable toolset groups with `GITLAB_TOOLSETS=<group,…>`, allow-list individual tools with
+> `GITLAB_TOOLS=<tool,…>` (e.g. read-only groups plus a few specific write tools), and
+> deny-list by pattern with `GITLAB_DENIED_TOOLS_REGEX`. The legacy `USE_GITLAB_WIKI` /
+> `USE_MILESTONE` / `USE_PIPELINE` flags are kept for backward compatibility only.
+> See [Tools Reference](./docs/tools/index.md#feature-toggles) and
+> [Environment Variables](./docs/configuration/environment-variables.md).
 
 - sse
 
@@ -104,11 +127,10 @@ docker run -i --rm \
   -e HOST=0.0.0.0 \
   -e GITLAB_PERSONAL_ACCESS_TOKEN=your_gitlab_token \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
-  -e GITLAB_READ_ONLY_MODE=true \
-  -e USE_GITLAB_WIKI=true \
-  -e USE_MILESTONE=true \
-  -e USE_PIPELINE=true \
+  -e GITLAB_PERMISSION_MODE=readonly \
+  -e GITLAB_TOOLSETS=wiki,milestones,pipelines \
   -e SSE=true \
+  -e SSE_AUTH_TOKEN=your_mcp_sse_token \
   -p 3333:3002 \
   zereight050/gitlab-mcp
 ```
@@ -118,7 +140,10 @@ docker run -i --rm \
   "mcpServers": {
     "gitlab": {
       "type": "sse",
-      "url": "http://localhost:3333/sse"
+      "url": "http://localhost:3333/sse",
+      "headers": {
+        "Authorization": "Bearer your_mcp_sse_token"
+      }
     }
   }
 }
@@ -131,10 +156,8 @@ docker run -i --rm \
   -e HOST=0.0.0.0 \
   -e REMOTE_AUTHORIZATION=true \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
-  -e GITLAB_READ_ONLY_MODE=true \
-  -e USE_GITLAB_WIKI=true \
-  -e USE_MILESTONE=true \
-  -e USE_PIPELINE=true \
+  -e GITLAB_PERMISSION_MODE=readonly \
+  -e GITLAB_TOOLSETS=wiki,milestones,pipelines \
   -e STREAMABLE_HTTP=true \
   -p 3333:3002 \
   zereight050/gitlab-mcp
@@ -180,10 +203,10 @@ Remote MCP OAuth is different. In `GITLAB_MCP_OAUTH=true` mode, the MCP client
 provides its own callback URL during `/authorize`. `GITLAB_OAUTH_REDIRECT_URI`
 does not replace that client-provided URL.
 
-| Mode | Enable with | Callback variable | GitLab redirect URI |
-| --- | --- | --- | --- |
-| Local OAuth | `GITLAB_USE_OAUTH=true` | `GITLAB_OAUTH_REDIRECT_URI` | `http://127.0.0.1:8888/callback` or your local callback |
-| Remote MCP OAuth | `GITLAB_MCP_OAUTH=true` | `GITLAB_OAUTH_CALLBACK_PROXY=true` | `{MCP_SERVER_URL}/callback` |
+| Mode             | Enable with             | Callback variable                  | GitLab redirect URI                                     |
+| ---------------- | ----------------------- | ---------------------------------- | ------------------------------------------------------- |
+| Local OAuth      | `GITLAB_USE_OAUTH=true` | `GITLAB_OAUTH_REDIRECT_URI`        | `http://127.0.0.1:8888/callback` or your local callback |
+| Remote MCP OAuth | `GITLAB_MCP_OAUTH=true` | `GITLAB_OAUTH_CALLBACK_PROXY=true` | `{MCP_SERVER_URL}/callback`                             |
 
 Use `GITLAB_OAUTH_REDIRECT_URI` only when the MCP server itself owns the local
 browser callback. Use `GITLAB_OAUTH_CALLBACK_PROXY=true` when a remote MCP client
@@ -199,17 +222,18 @@ exchanging credentials with GitLab on behalf of the client.
 2. A pre-registered GitLab OAuth application with `api` (or `read_api`) scopes
    — Go to `Admin area` → `Applications`, set Redirect URI to `{MCP_SERVER_URL}/callback`
 
-| Environment Variable  | Required | Description                                                |
-| --------------------- | -------- | ---------------------------------------------------------- |
-| `GITLAB_MCP_OAUTH`    | ✅       | Set to `true` to enable                                    |
-| `GITLAB_API_URL`      | ✅       | GitLab API base URL                                        |
-| `GITLAB_OAUTH_APP_ID` | ✅       | GitLab OAuth Application ID                                |
-| `MCP_SERVER_URL`      | ✅       | Public HTTPS URL of this MCP server                        |
-| `STREAMABLE_HTTP`     | ✅       | Must be `true`                                             |
-| `GITLAB_OAUTH_CALLBACK_PROXY` | optional | Set to `true` to use the MCP server's fixed `/callback` URL |
-| `GITLAB_OAUTH_SCOPES` | optional | Comma-separated scopes (default: `api,read_api,read_user`) |
+| Environment Variable          | Required | Description                                                                                                                             |
+| ----------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `GITLAB_MCP_OAUTH`            | ✅       | Set to `true` to enable                                                                                                                 |
+| `GITLAB_API_URL`              | ✅       | GitLab API base URL                                                                                                                     |
+| `GITLAB_OAUTH_APP_ID`         | ✅       | GitLab OAuth Application ID                                                                                                             |
+| `MCP_SERVER_URL`              | ✅       | Public HTTPS URL of this MCP server                                                                                                     |
+| `STREAMABLE_HTTP`             | ✅       | Must be `true`                                                                                                                          |
+| `GITLAB_OAUTH_CALLBACK_PROXY` | optional | Set to `true` to use the MCP server's fixed `/callback` URL                                                                             |
+| `GITLAB_OAUTH_SCOPES`         | optional | Comma-separated scopes (default: `api,read_api,read_user`)                                                                              |
+| `GITLAB_OAUTH_ALLOWED_GROUPS` | optional | Comma-separated group full paths — only members (and subgroup members) may obtain a token (replaces deprecated `GITLAB_ALLOWED_GROUPS`) |
 
-When `STREAMABLE_HTTP=true`, server-side `GITLAB_PERSONAL_ACCESS_TOKEN` or `GITLAB_JOB_TOKEN` require `REMOTE_AUTHORIZATION=true` or `GITLAB_MCP_OAUTH=true`.
+When `STREAMABLE_HTTP=true`, server-side GitLab credentials (`GITLAB_PERSONAL_ACCESS_TOKEN`, `GITLAB_JOB_TOKEN`, `GITLAB_AUTH_COOKIE_PATH`, or `GITLAB_USE_OAUTH`) require `REMOTE_AUTHORIZATION=true`, `GITLAB_MCP_OAUTH=true`, or `STREAMABLE_HTTP_AUTH_TOKEN`.
 
 > **Troubleshooting `Unregistered redirect_uri`**
 >
@@ -259,11 +283,29 @@ the token to GitLab on behalf of the caller.
 
 **Header priority**: `Private-Token` > `JOB-TOKEN` > `Authorization: Bearer`
 
-| Environment Variable     | Required | Description                                                |
-| ------------------------ | -------- | ---------------------------------------------------------- |
-| `REMOTE_AUTHORIZATION`   | ✅       | Set to `true` to enable                                    |
-| `STREAMABLE_HTTP`        | ✅       | Must be `true`                                             |
-| `ENABLE_DYNAMIC_API_URL` | optional | Allow per-request GitLab URL via `X-GitLab-API-URL` header |
+| Environment Variable                          | Required | Description                                                                                                             |
+| --------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `REMOTE_AUTHORIZATION`                        | ✅       | Set to `true` to enable                                                                                                 |
+| `STREAMABLE_HTTP`                             | ✅       | Must be `true`                                                                                                          |
+| `ENABLE_DYNAMIC_API_URL`                      | optional | Allow per-request GitLab URL via `X-GitLab-API-URL` header                                                              |
+| `GITLAB_ALLOWED_HOSTS`                        | optional | Comma-separated allowed `X-GitLab-API-URL` hosts; `GITLAB_API_URL` hosts are always allowed                             |
+| `GITLAB_ALLOW_UNAUTHENTICATED_TOOL_DISCOVERY` | optional | Allow unauthenticated `initialize`, `notifications/initialized`, and `tools/list` only (tool calls still require auth)  |
+| `MCP_SERVER_URL` / `MCP_ALLOWED_HOSTS` / `MCP_ALLOWED_ORIGINS` | optional | Allowed public `/mcp` host/origin values for DNS rebinding protection                                   |
+| `MCP_TRUST_PROXY`                             | optional | Trust `Forwarded` / `X-Forwarded-*` headers behind a reverse proxy (download URLs, Express `req.ip`, `/mcp` IP rate limits, OAuth rate limits) |
+
+`GITLAB_ALLOW_UNAUTHENTICATED_TOOL_DISCOVERY=true` is intended for MCP gateways
+or admin UIs that need to inspect tool metadata before a user provides a GitLab
+token. Leave it disabled unless the tool list is safe to expose in your deployment.
+
+When `MCP_SERVER_URL` is not set, remote download URLs fall back to the local
+server address. Set `MCP_TRUST_PROXY=true` only if the server is reachable through a
+trusted reverse proxy and direct client access to the MCP server is blocked.
+This enables Express `trust proxy` for Streamable HTTP and SSE, derives public
+download URLs from `Forwarded` / `X-Forwarded-Proto` / `X-Forwarded-Host` /
+`X-Forwarded-Prefix`, and keeps OAuth endpoint rate limiting working when
+proxies send `X-Forwarded-For` with a client port (for example `1.2.3.4:5678`).
+Existing OAuth+proxy deployments must set this explicitly after the flag was
+introduced.
 
 **Example request headers**:
 
@@ -283,14 +325,15 @@ Authorization: Bearer glpat-xxxxxxxxxxxxxxxxxxxx
 
 Use the dedicated reference for the full environment variable list:
 
-- [Environment Variables Reference](./docs/environment-variables.md)
+- [Environment Variables Reference](./docs/configuration/environment-variables.md)
 
 Most users only need one of these starting sets:
 
 - **Local PAT**: `GITLAB_PERSONAL_ACCESS_TOKEN`, `GITLAB_API_URL`
 - **Local OAuth**: `GITLAB_USE_OAUTH=true`, `GITLAB_OAUTH_CLIENT_ID`, `GITLAB_OAUTH_REDIRECT_URI`, `GITLAB_API_URL`
-- **Remote multi-user HTTP**: `STREAMABLE_HTTP=true`, `REMOTE_AUTHORIZATION=true`, `HOST`, `PORT`
-- **Multi-pod HPA (stateless)**: above + `OAUTH_STATELESS_MODE=true`, `OAUTH_STATELESS_SECRET` (same across all pods). See [Stateless Mode](./docs/stateless-mode.md).
+- **Remote multi-user HTTP**: `STREAMABLE_HTTP=true`, `REMOTE_AUTHORIZATION=true` (or `GITLAB_MCP_OAUTH=true`), `MCP_TRUST_PROXY=true` (behind a reverse proxy), `MAX_REQUESTS_PER_MINUTE=300`, `MCP_SERVER_URL` or `MCP_ALLOWED_HOSTS`, `HOST`, `PORT`
+- **Multiple side-by-side deployments**: set a distinct `MCP_SERVER_NAME` per instance (e.g. `gitlab-selfhosted-readonly`) so clients, logs, and telemetry can tell them apart
+- **Multi-pod HPA (stateless)**: above + `OAUTH_STATELESS_MODE=true`, `OAUTH_STATELESS_SECRET` (same across all pods). See [Stateless Mode](./docs/configuration/stateless-mode.md).
 
 Commonly referenced variables:
 
@@ -298,6 +341,11 @@ Commonly referenced variables:
 - `GITLAB_PERSONAL_ACCESS_TOKEN`
 - `GITLAB_USE_OAUTH`
 - `REMOTE_AUTHORIZATION`
+- `MCP_TRUST_PROXY`
+- `MAX_REQUESTS_PER_MINUTE`
+- `MAX_SESSIONS`
+- `MCP_ALLOWED_HOSTS`
+- `MCP_ALLOWED_ORIGINS`
 - `GITLAB_MCP_OAUTH`
 - `GITLAB_OAUTH_CALLBACK_PROXY`
 - `OAUTH_STATELESS_MODE`
@@ -312,7 +360,7 @@ The reference document also covers:
 - transport and session variables
 - proxy and TLS variables
 
-For callback proxy mode details, see [GitLab MCP OAuth Callback Proxy](./docs/oauth-callback-proxy.md).
+For callback proxy mode details, see [GitLab MCP OAuth Callback Proxy](./docs/auth/oauth-callback-proxy.md).
 
 ### Remote Authorization Setup (Multi-User Support)
 
@@ -330,7 +378,7 @@ docker run -d \
   -e STREAMABLE_HTTP=true \
   -e REMOTE_AUTHORIZATION=true \
   -e GITLAB_API_URL="https://gitlab.com/api/v4" \
-  -e GITLAB_READ_ONLY_MODE=true \
+  -e GITLAB_PERMISSION_MODE=readonly \
   -e SESSION_TIMEOUT_SECONDS=3600 \
   -p 3333:3002 \
   zereight050/gitlab-mcp
@@ -374,7 +422,7 @@ The token is stored per session (identified by `mcp-session-id` header) and reus
   Tokens are automatically cleaned up when sessions close
 - **Session timeout:** Auth tokens expire after `SESSION_TIMEOUT_SECONDS` (default 1 hour) of inactivity. After timeout, the client must send auth headers again. The transport session remains active.
 - Each request resets the timeout timer for that session
-- **Rate limiting:** Each session is limited to `MAX_REQUESTS_PER_MINUTE` requests per minute (default 60)
+- **Rate limiting:** `/mcp` requests are limited to `MAX_REQUESTS_PER_MINUTE` per client IP, and per MCP session when using OAuth or remote authorization (default 60). See [environment-variables.md](docs/configuration/environment-variables.md#max_requests_per_minute).
 - **Capacity limit:** Server accepts up to `MAX_SESSIONS` concurrent sessions (default 1000)
 
 ### MCP OAuth Setup (Claude.ai Native OAuth)
@@ -450,7 +498,7 @@ No `headers` field is needed — Claude.ai obtains the token via OAuth automatic
 | ------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GITLAB_MCP_OAUTH`                          | Yes      | Set to `true` to enable                                                                                                                                                                                             |
 | `GITLAB_OAUTH_APP_ID`                       | Yes      | Client ID of the pre-registered GitLab OAuth application                                                                                                                                                            |
-| `MCP_SERVER_URL`                            | Yes      | Public HTTPS URL of your MCP server                                                                                                                                                                                 |
+| `MCP_SERVER_URL`                            | Yes      | Public HTTPS URL of your MCP server; also allowed for `/mcp` Host/Origin checks                                                                                                                                     |
 | `GITLAB_API_URL`                            | Yes      | Your GitLab instance API URL (e.g. `https://gitlab.com/api/v4`)                                                                                                                                                     |
 | `STREAMABLE_HTTP`                           | Yes      | Must be `true` (SSE is not supported)                                                                                                                                                                               |
 | `GITLAB_OAUTH_SCOPES`                       | No       | Comma-separated GitLab scopes to request (e.g. `api,read_user`). Defaults to `api` (or `read_api` when `GITLAB_READ_ONLY_MODE=true`). The pre-registered application must be configured with at least these scopes. |
@@ -594,77 +642,101 @@ Register the skill directory in your AI client to get optimal tool usage guidanc
 101. `get_milestone_merge_requests` - Get merge requests associated with a specific milestone
 102. `promote_milestone` - Promote a milestone to the next stage
 103. `get_milestone_burndown_events` - Get burndown events for a specific milestone
-104. `list_wiki_pages` - List wiki pages in a GitLab project
-105. `get_wiki_page` - Get details of a specific wiki page
-106. `create_wiki_page` - Create a new wiki page in a GitLab project
-107. `update_wiki_page` - Update an existing wiki page in a GitLab project
-108. `delete_wiki_page` - Delete a wiki page from a GitLab project
-109. `list_group_wiki_pages` - List wiki pages in a GitLab group
-110. `get_group_wiki_page` - Get details of a specific group wiki page
-111. `create_group_wiki_page` - Create a new wiki page in a GitLab group
-112. `update_group_wiki_page` - Update an existing wiki page in a GitLab group
-113. `delete_group_wiki_page` - Delete a wiki page from a GitLab group
-114. `get_repository_tree` - Get the repository tree for a GitLab project (list files and directories)
-115. `list_commits` - List repository commits with filtering options
-116. `get_commit` - Get details of a specific commit
-117. `get_commit_diff` - Get changes/diffs of a specific commit
-118. `list_commit_statuses` - List statuses for a specific commit
-119. `create_commit_status` - Create or update the status of a specific commit
-120. `list_releases` - List all releases for a project
-121. `get_release` - Get a release by tag name
-122. `create_release` - Create a new release in a GitLab project
-123. `update_release` - Update an existing release in a GitLab project
-124. `delete_release` - Delete a release from a GitLab project (does not delete the associated tag)
-125. `create_release_evidence` - Create release evidence for an existing release (GitLab Premium/Ultimate only)
-126. `download_release_asset` - Download a release asset file by direct asset path
-127. `list_tags` - List repository tags with filtering and pagination support
-128. `get_tag` - Get details of a specific repository tag
-129. `create_tag` - Create a new tag in the repository
-130. `delete_tag` - Delete a tag from the repository
-131. `get_tag_signature` - Get the signature of a signed tag
-132. `get_users` - Get GitLab user details by usernames
-133. `list_events` - List all events for the currently authenticated user
-134. `get_project_events` - List all visible events for a specified project
-135. `upload_markdown` - Upload a file to a GitLab project for use in markdown content
-136. `download_attachment` - Download an uploaded file from a GitLab project by secret and filename
-137. `get_work_item` - Get a single work item with full details including status, hierarchy (parent/children), type, labels, assignees, and all widgets
-138. `list_work_items` - List work items in a project with filters (type, state, search, assignees, labels). Returns items with status and hierarchy info
-139. `create_work_item` - Create a new work item (issue, task, incident, test_case, epic, key_result, objective, requirement, ticket). Supports setting title, description, labels, assignees, weight, parent, health status, start/due dates, milestone, and confidentiality
-140. `update_work_item` - Update a work item. Can modify title, description, labels, assignees, weight, state, status, parent hierarchy, children, health status, start/due dates, milestone, confidentiality, linked items, and custom fields
-141. `convert_work_item_type` - Convert a work item to a different type (e.g. issue to task, task to incident)
-142. `list_work_item_statuses` - List available statuses for a work item type in a project. Requires GitLab Premium/Ultimate with configurable statuses
-143. `list_custom_field_definitions` - List available custom field definitions for a work item type in a project. Returns field names, types, and IDs needed for setting custom fields via update_work_item
-144. `move_work_item` - Move a work item (issue, task, etc.) to a different project. Uses GitLab GraphQL issueMove mutation
-145. `list_work_item_notes` - List notes and discussions on a work item. Returns threaded discussions with author, body, timestamps, and system/internal flags
-146. `create_work_item_note` - Add a note/comment to a work item. Supports Markdown, internal notes, and threaded replies
-147. `get_timeline_events` - List timeline events for an incident. Returns chronological events with notes, timestamps, and tags
-148. `create_timeline_event` - Create a timeline event on an incident. Supports tags: 'Start time', 'End time', 'Impact detected', 'Response initiated', 'Impact mitigated', 'Cause identified'
-149. `list_webhooks` - List all configured webhooks for a GitLab project or group. Provide either project_id or group_id
-150. `list_webhook_events` - List recent webhook events (past 7 days) for a project or group webhook. Use summary mode for overview, then get_webhook_event for full details
-151. `get_webhook_event` - Get full details of a specific webhook event by ID, including request/response payloads
-152. `search_code` - Search for code across all projects on the GitLab instance (requires advanced search or exact code search to be enabled)
-153. `search_project_code` - Search for code within a specific GitLab project (requires advanced search or exact code search to be enabled)
-154. `search_group_code` - Search for code within a specific GitLab group (requires advanced search or exact code search to be enabled)
-155. `execute_graphql` - Execute a GitLab GraphQL query
-156. `list_merge_request_pipelines` - List pipelines for a merge request with pagination support
-157. `list_project_variables` - List CI/CD variables for a project with optional environment scope filter
-158. `get_project_variable` - Get a single CI/CD variable from a project by key, with optional environment scope filter
-159. `create_project_variable` - Create a new CI/CD variable in a project
-160. `update_project_variable` - Update an existing CI/CD variable in a project, with optional filter to disambiguate by environment scope
-161. `delete_project_variable` - Delete a CI/CD variable from a project, with optional filter to disambiguate by environment scope
-162. `list_group_variables` - List CI/CD variables for a group with optional environment scope filter
-163. `get_group_variable` - Get a single CI/CD variable from a group by key, with optional environment scope filter
-164. `create_group_variable` - Create a new CI/CD variable in a group
-165. `update_group_variable` - Update an existing CI/CD variable in a group, with optional filter to disambiguate by environment scope
-166. `delete_group_variable` - Delete a CI/CD variable from a group, with optional filter to disambiguate by environment scope
-167. `get_dependency_proxy_settings` - Get dependency proxy settings for a group (enabled status, blob count, total size, image prefix, TTL policy)
-168. `update_dependency_proxy_settings` - Update dependency proxy settings for a group (enable/disable, credentials for authenticated Docker Hub pulls)
-169. `list_dependency_proxy_blobs` - List cached dependency proxy blobs for a group with cursor-based pagination
-170. `purge_dependency_proxy_cache` - Schedule purge of all cached dependency proxy blobs for a group
+104. `list_group_milestones` - List milestones in a GitLab group with filtering options
+105. `get_group_milestone` - Get details of a specific group milestone
+106. `create_group_milestone` - Create a new milestone in a GitLab group
+107. `edit_group_milestone` - Edit an existing group milestone
+108. `delete_group_milestone` - Delete a milestone from a GitLab group
+109. `get_group_milestone_issue` - Get issues associated with a specific group milestone
+110. `get_group_milestone_merge_requests` - Get merge requests associated with a specific group milestone
+111. `get_group_milestone_burndown_events` - Get burndown events for a specific group milestone
+112. `list_wiki_pages` - List wiki pages in a GitLab project
+113. `get_wiki_page` - Get details of a specific wiki page
+114. `create_wiki_page` - Create a new wiki page in a GitLab project
+115. `update_wiki_page` - Update an existing wiki page in a GitLab project
+116. `delete_wiki_page` - Delete a wiki page from a GitLab project
+117. `list_group_wiki_pages` - List wiki pages in a GitLab group
+118. `get_group_wiki_page` - Get details of a specific group wiki page
+119. `create_group_wiki_page` - Create a new wiki page in a GitLab group
+120. `update_group_wiki_page` - Update an existing wiki page in a GitLab group
+121. `delete_group_wiki_page` - Delete a wiki page from a GitLab group
+122. `get_repository_tree` - Get the repository tree for a GitLab project (list files and directories)
+123. `list_commits` - List repository commits with filtering options
+124. `get_commit` - Get details of a specific commit
+125. `get_commit_diff` - Get changes/diffs of a specific commit
+126. `list_commit_statuses` - List statuses for a specific commit
+127. `create_commit_status` - Create or update the status of a specific commit
+128. `list_releases` - List all releases for a project
+129. `get_release` - Get a release by tag name
+130. `create_release` - Create a new release in a GitLab project
+131. `update_release` - Update an existing release in a GitLab project
+132. `delete_release` - Delete a release from a GitLab project (does not delete the associated tag)
+133. `create_release_evidence` - Create release evidence for an existing release (GitLab Premium/Ultimate only)
+134. `download_release_asset` - Download a release asset file by direct asset path
+135. `list_tags` - List repository tags with filtering and pagination support
+136. `get_tag` - Get details of a specific repository tag
+137. `create_tag` - Create a new tag in the repository
+138. `delete_tag` - Delete a tag from the repository
+139. `get_tag_signature` - Get the signature of a signed tag
+140. `get_users` - Get GitLab user details by usernames
+141. `list_events` - List all events for the currently authenticated user
+142. `get_project_events` - List all visible events for a specified project
+143. `upload_markdown` - Upload a file to a GitLab project for use in markdown content
+144. `download_attachment` - Download an uploaded file from a GitLab project by secret and filename
+145. `get_work_item` - Get a single work item with full details including status, hierarchy (parent/children), type, labels, assignees, and all widgets
+146. `list_work_items` - List work items in a project with filters (type, state, search, assignees, labels). Returns items with status and hierarchy info
+147. `create_work_item` - Create a new work item (issue, task, incident, test_case, epic, key_result, objective, requirement, ticket). Supports setting title, description, labels, assignees, weight, parent, health status, start/due dates, milestone, and confidentiality
+148. `update_work_item` - Update a work item. Can modify title, description, labels, assignees, weight, state, status, parent hierarchy, children, health status, start/due dates, milestone, confidentiality, linked items, and custom fields
+149. `convert_work_item_type` - Convert a work item to a different type (e.g. issue to task, task to incident)
+150. `list_work_item_statuses` - List available statuses for a work item type in a project. Requires GitLab Premium/Ultimate with configurable statuses
+151. `list_custom_field_definitions` - List available custom field definitions for a work item type in a project. Returns field names, types, and IDs needed for setting custom fields via update_work_item
+152. `move_work_item` - Move a work item (issue, task, etc.) to a different project. Uses GitLab GraphQL issueMove mutation
+153. `list_work_item_notes` - List notes and discussions on a work item. Returns threaded discussions with author, body, timestamps, and system/internal flags
+154. `create_work_item_note` - Add a note/comment to a work item. Supports Markdown, internal notes, and threaded replies
+155. `get_timeline_events` - List timeline events for an incident. Returns chronological events with notes, timestamps, and tags
+156. `create_timeline_event` - Create a timeline event on an incident. Supports tags: 'Start time', 'End time', 'Impact detected', 'Response initiated', 'Impact mitigated', 'Cause identified'
+157. `list_webhooks` - List all configured webhooks for a GitLab project or group. Provide either project_id or group_id
+158. `list_webhook_events` - List recent webhook events (past 7 days) for a project or group webhook. Use summary mode for overview, then get_webhook_event for full details
+159. `get_webhook_event` - Get full details of a specific webhook event by ID, including request/response payloads
+160. `search_code` - Search for code across all projects on the GitLab instance (requires advanced search or exact code search to be enabled)
+161. `search_project_code` - Search for code within a specific GitLab project (requires advanced search or exact code search to be enabled)
+162. `search_group_code` - Search for code within a specific GitLab group (requires advanced search or exact code search to be enabled)
+163. `execute_graphql` - Execute a GitLab GraphQL query
+164. `list_merge_request_pipelines` - List pipelines for a merge request with pagination support
+165. `list_project_variables` - List CI/CD variables for a project with optional environment scope filter
+166. `get_project_variable` - Get a single CI/CD variable from a project by key, with optional environment scope filter
+167. `create_project_variable` - Create a new CI/CD variable in a project
+168. `update_project_variable` - Update an existing CI/CD variable in a project, with optional filter to disambiguate by environment scope
+169. `delete_project_variable` - Delete a CI/CD variable from a project, with optional filter to disambiguate by environment scope
+170. `list_group_variables` - List CI/CD variables for a group with optional environment scope filter
+171. `get_group_variable` - Get a single CI/CD variable from a group by key, with optional environment scope filter
+172. `create_group_variable` - Create a new CI/CD variable in a group
+173. `update_group_variable` - Update an existing CI/CD variable in a group, with optional filter to disambiguate by environment scope
+174. `delete_group_variable` - Delete a CI/CD variable from a group, with optional filter to disambiguate by environment scope
+175. `get_dependency_proxy_settings` - Get dependency proxy settings for a group (enabled status, blob count, total size, image prefix, TTL policy)
+176. `update_dependency_proxy_settings` - Update dependency proxy settings for a group (enable/disable, credentials for authenticated Docker Hub pulls)
+177. `list_dependency_proxy_blobs` - List cached dependency proxy blobs for a group with cursor-based pagination
+178. `purge_dependency_proxy_cache` - Schedule purge of all cached dependency proxy blobs for a group
 
 <!-- TOOLS-END -->
 
 </details>
+
+### Wiki page titles vs. slugs
+
+GitLab derives a wiki page's **slug** (its URL, `/-/wikis/<slug>`) from the page title. Passing `title` to `update_wiki_page` / `update_group_wiki_page` therefore **renames the page and changes its URL** — for nested pages it can also move the page to a different path — which breaks existing links.
+
+To change only the **displayed title** while keeping the URL stable, do **not** pass `title`. Instead, store the display title in the page content's YAML front matter and update the content:
+
+```markdown
+---
+title: My Custom Display Title
+---
+
+Page body…
+```
+
+GitLab keeps the slug/URL untouched and shows the front-matter title in the UI. Read it back with `get_wiki_page` using `render_html: true`, which populates the `front_matter` field — the plain `title` field always reflects the slug-derived value.
 
 ## Testing 🧪
 
