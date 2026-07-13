@@ -1,4 +1,4 @@
-FROM node:22.22.3-alpine3.22 AS builder
+FROM node:22.23.1-alpine3.24 AS builder
 
 COPY . /app
 COPY tsconfig.json /tsconfig.json
@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.npm npm install
 
 RUN --mount=type=cache,target=/root/.npm-production npm ci --ignore-scripts --omit-dev
 
-FROM node:22.22.3-alpine3.22 AS release
+FROM node:22.23.1-alpine3.24 AS release
 
 WORKDIR /app
 
